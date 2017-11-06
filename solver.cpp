@@ -1,13 +1,10 @@
-#include "solver.h"
+﻿#include "solver.h"
 
 using namespace std;
-
-
 
 ofstream out("work.tex");
 ofstream maple("maple.txt");
 ofstream outHtml("output.html");
-
 
 Vector* e;
 
@@ -52,12 +49,13 @@ double f(const Vector& v) {
 
 //--------------------------------------------------------
 
-void makeIteration(const Vector& x) {
-    outHtml <<"<tr><td>"<< ++iter << "</td><td>" << x[1] << "</td><td>"
+void Solver::makeIteration(const Vector& x) {
+    if(html)
+        outHtml <<"<tr><td>"<< ++iter << "</td><td>" << x[1] << "</td><td>"
            << x[2]<< "</td>"
            <<"<td>"<< f(x) << "</td></tr>" << endl;
-
-    out << ++iter << "&" << x << "& " << f(x) << "\\\\ \\hline" << endl;
+    if(latex)
+        out << ++iter << "&" << x << "& " << f(x) << "\\\\ \\hline" << endl;
     maple << ",[" << x[1] << "," << x[2] << "]";
     for(int i = 1; i <= n; i++) {
         Min[i] = min(Min[i], x[i]);
@@ -83,7 +81,7 @@ Vector poisk(Vector x, double Delta) {
     return x;
 }
 
-Vector Hooke_Jeeves(Vector x) {
+Vector Solver::Hooke_Jeeves(Vector x) {
     double Delta = 1;
     double lambda = 2;
     while(Delta > epsilon) {
@@ -104,7 +102,7 @@ Vector Hooke_Jeeves(Vector x) {
     return x;
 }
 
-Vector Coordinate_Descent(Vector x) {
+Vector Solver::Coordinate_Descent(Vector x) {
     for(;;) {
         Vector x_0 = x;
         for(int i = 1; i <= n; i++) {
@@ -124,7 +122,7 @@ Vector Coordinate_Descent(Vector x) {
     return x;
 }
 
-Vector Rosenbrock(Vector x) {
+Vector Solver::Rosenbrock(Vector x) {
     double alpha = 3;
     double beta = -0.5;
     Vector * s = new Vector[n] - 1;
@@ -198,7 +196,7 @@ Vector Rosenbrock(Vector x) {
     return x;
 }
 
-Vector Powell (Vector x) {
+Vector Solver::Powell (Vector x) {
     Vector * s = new Vector[n] - 1;
     for(int i = 1; i <= n; i++)
         s[i] = e[i];
@@ -250,7 +248,7 @@ Vector Powell (Vector x) {
     return x;
 }
 
-Vector Nelder_Mead(Vector X) {
+Vector Solver::Nelder_Mead(Vector X) {
     double alpha = 1, beta = 0.5, gamma = 2;
     Vector * x = new Vector[n+1]-1;
     x[1] = X;
@@ -331,20 +329,26 @@ Vector Nelder_Mead(Vector X) {
     }
 }
 
-void Solver::run(int variant, bool html, bool latex) {
+void Solver::solve(int variant) {
+    out.open("work.tex");
+    maple.open("maple.txt");
+    outHtml.open("output.html");
     setlocale(LC_ALL, "russian");
-    outHtml<<"<html><meta charset='UTF-8'>"
-          <<"<head><style> table, th, td {"
-          <<"border: 1px solid black;"
-          <<"}"
-            <<"* {font-size:18px;}"
-            <<"</style></head>"
-          <<endl;
+    qDebug()<<variant<<" " << html << " " << latex<<endl;
+    if(html)
+        outHtml<<"<html><meta charset='UTF-8'>"
+              <<"<head><style> table, th, td {"
+              <<"border: 1px solid black;"
+              <<"}"
+                <<"* {font-size:18px;}"
+                <<"</style></head>"
+              <<endl;
     e = new Vector[n];
     e--;
     for(int i = 1; i <= n; i++)
         e[i] = Vector::ort(i);
-    emit sendMsg("Начало вычилений");
+    emit sendMsg("Начало вычислений");
+    emit progress(0.02);
 
     Vector begin;
 
@@ -366,9 +370,10 @@ void Solver::run(int variant, bool html, bool latex) {
         << "\\hline"
         << "Методы&Число итераций&$X_{1opt}$&$X_{2opt}$&$F(X_{1opt},X_{2opt})$\\\\" << endl
         << "\\hline" << endl;
-        outHtml << "Задача " << zadanie << "." << endl << endl;
-
-        out << "Задача " << zadanie << "." << endl << endl;
+        if(html)
+            outHtml << "Задача " << zadanie << "." << endl << endl;
+        if(latex)
+            out << "Задача " << zadanie << "." << endl << endl;
         string s;
         if(zadanie == 1) {
             for(int j = 0; j < 2 + 2 * variant%10; j++)
@@ -395,22 +400,25 @@ void Solver::run(int variant, bool html, bool latex) {
         for(int i = 0; i < 5; i++) {
             Min = begin;
             Max = begin;
-            outHtml << "Результаты расчёта методом " << methods[i] << ":" << endl << endl;
-            out << "Результаты расчёта методом " << methods[i] << ":" << endl << endl;
+            if(html)
+                outHtml << "Результаты расчёта методом " << methods[i] << ":" << endl << endl;
+            if(latex)
+                out << "Результаты расчёта методом " << methods[i] << ":" << endl << endl;
 
-            outHtml << "<table style='border:1; width:100%'>"
+            if(html)
+                outHtml << "<table style='border:1; width:100%'>"
                     << "<tr><td># итерации</td><td>X1</td><td>X2</td><td>F(X1,X2)</td></tr>";
-
-            out << "\\begin{table}[H]" << endl
-            << "\\hspace{0cm}\\rightline{Таблица " << table++ << ". Метод " << methods[i] <<  "}" << endl
-            << "\\begin{center}" << endl
-            << "\\begin{tabular}{|p{3cm}|p{4.2cm}|p{4.2cm}|p{4.2cm}|}" << endl
-            << "\\hline"
-            << "&\\multicolumn{3}{p{12.6cm}|}{\\textbf{Полученные значения}}\\\\" << endl
-            << "\\cline{2-4}" << endl
-            << "\\raisebox{1.5ex}[0cm][0cm]{\\textbf{№ итерации }}&\\vspace{0.1cm}" << endl
-            << "{\\textbf{X1}} &\\vspace{0.1cm} {\\textbf{X2}}&\\vspace{0.1cm}{\\textbf{F(X1,X2)}} \\\\" << endl
-            << "\\hline" << endl;
+            if(latex)
+                out << "\\begin{table}[H]" << endl
+                    << "\\hspace{0cm}\\rightline{Таблица " << table++ << ". Метод " << methods[i] <<  "}" << endl
+                    << "\\begin{center}" << endl
+                    << "\\begin{tabular}{|p{3cm}|p{4.2cm}|p{4.2cm}|p{4.2cm}|}" << endl
+                    << "\\hline"
+                    << "&\\multicolumn{3}{p{12.6cm}|}{\\textbf{Полученные значения}}\\\\" << endl
+                    << "\\cline{2-4}" << endl
+                    << "\\raisebox{1.5ex}[0cm][0cm]{\\textbf{№ итерации }}&\\vspace{0.1cm}" << endl
+                    << "{\\textbf{X1}} &\\vspace{0.1cm} {\\textbf{X2}}&\\vspace{0.1cm}{\\textbf{F(X1,X2)}} \\\\" << endl
+                    << "\\hline" << endl;
             maple << "plot1:=plot([[0,0]";
             iter = 0;
             Vector x_opt;
@@ -433,23 +441,27 @@ void Solver::run(int variant, bool html, bool latex) {
             }
             resultHtml << "<tr><td>" << methods[i] << " </td><td> " << iter << "</td><td>" << x_opt[1] << "</td><td> "<<x_opt[2] <<"</td><td>"<< f(x_opt) << "</td></tr>";
             result << methods[i] << " & " << iter << "&" << x_opt << "& " << f(x_opt) << "\\\\ \\hline";
-            outHtml<<"</table><br/><br/>";
-            out << "\\end{tabular}" << endl
-                << "\\end{center}" << endl
-                << "\\end{table} " << endl << endl;
+            if(html)
+                outHtml<<"</table><br/><br/>";
+            if(latex)
+                out << "\\end{tabular}" << endl
+                    << "\\end{center}" << endl
+                    << "\\end{table} " << endl << endl;
             Vector radius;
             radius[1] = max(x_opt[1] - Min[1], Max[1] - x_opt[1]);
             radius[2] = max(x_opt[2] - Min[2], Max[2] - x_opt[2]);
             Min = x_opt - radius;
             Max = x_opt + radius;
-            out << "Теперь изобразим траекторию поиска методом " << methods [i] <<" (рисунок \\ref{img"<<zadanie<<i<<"})." << endl << endl;
-            out<<"\\begin{figure}[H]"<<endl
-              <<"\\begin{center}"<<endl
-             <<"\\includegraphics[width=10cm]{output"<<zadanie<<i<<"}"<<endl
-            <<"\\caption{\Задача " << zadanie << ". Метод " << methods[i] << "}"<<endl
-            <<"\\label{img"<<zadanie<<i<<"}"<<endl
-             <<"\\end{center}"<<endl
-            <<"\\end{figure}"<<endl;
+            if(latex) {
+                out << "Теперь изобразим траекторию поиска методом " << methods [i] <<" (рисунок \\ref{img"<<zadanie<<i<<"})." << endl << endl;
+                out<<"\\begin{figure}[H]"<<endl
+                  <<"\\begin{center}"<<endl
+                 <<"\\includegraphics[width=10cm]{output"<<zadanie<<i<<"}"<<endl
+                <<"\\caption{\Задача " << zadanie << ". Метод " << methods[i] << "}"<<endl
+                <<"\\label{img"<<zadanie<<i<<"}"<<endl
+                 <<"\\end{center}"<<endl
+                <<"\\end{figure}"<<endl;
+            }
             maple << "], x = " << Min[1] << ".." << Max[1] << ", y = " <<  Min[2] << ".." << Max[2] <<", color=red):" << endl;
             maple << "plot2 := contourplot(F" << zadanie << "(x, y), x =  " << Min[1] << ".." << Max[1] << ", y = " <<  Min[2] << ".." << Max[2] <<", color = blue):" << endl;
             maple << "plotsetup(ps, plotoutput=\"./Images/output"<<zadanie<<i<<".eps\", plotoptions=`portrait,noborder,color`);"<<endl;
@@ -460,32 +472,52 @@ void Solver::run(int variant, bool html, bool latex) {
                << "\\end{center}" << endl
                << "\\end{table}" << endl;
         resultHtml << "</table>";
-        out << "Итоговые результаты: " << endl << result.str();
-        outHtml << "Итоговые результаты : " << endl << resultHtml.str();
+        if(latex)
+            out << "Итоговые результаты: " << endl << result.str();
+        if(html)
+            outHtml << "Итоговые результаты : " << endl << resultHtml.str();
+        progress(zadanie * 10.0 / 100.0 + 0.12);
     }
-    outHtml << "<br/><br/><h1>Код для визуализации в Maple. </h1>"
+    if(html)
+        outHtml << "<br/><br/><h1>Код для визуализации в Maple. </h1>"
             <<"<object data='./maple.txt' type='text/plain' style='border: 1px solid black;height: 600px; width: 100%; background: #d3d3d3;'>"
             <<"<a href='./maple.txt'>No Support?</a>"
             <<"</object>"
             <<"<html>";
+    emit sendMsg("Сохранение отчета html");
+    progress(0.65);
+
     outHtml.close();
     out.close();
     maple.close();
     delete [] ++e;
-    system("rm latex_log maple_log ");
-    emit sendMsg("Лог работы расположен в файлах latex_log и maple_log соответственно");
-    emit sendMsg("maple начал построение графиков");
-    system("maple ./maple.txt > ./maple_log");
-    emit sendMsg("maple закончил построение графиков");
-    emit sendMsg("latex начал сборку отчета");
-    system("pdflatex  -synctex=1 -interaction=nonstopmode report.tex > /dev/null");
-    system("pdflatex  -synctex=1 -interaction=nonstopmode report.tex > ./latex_log");
-    emit sendMsg("latex закончил сборку отчета");
-    emit sendMsg("удаление временных файлов");
+    if(latex) {
+        system("rm latex_log maple_log ");
+        emit sendMsg("Лог работы расположен в файлах latex_log и maple_log соответственно");
+        emit sendMsg("maple начал построение графиков");
+        system("maple ./maple.txt > ./maple_log");
+        emit sendMsg("maple закончил построение графиков");
+        emit progress(0.70);
+        emit sendMsg("latex начал сборку отчета");
+        system("pdflatex  -synctex=1 -interaction=nonstopmode report.tex > /dev/null");
+        system("pdflatex  -synctex=1 -interaction=nonstopmode report.tex > ./latex_log");
+        emit sendMsg("latex закончил сборку отчета");
+        emit progress(0.90);
+        emit sendMsg("удаление временных файлов");
 
-    system("rm *.aux");
-    system("rm *.out");
-    system("rm *.log");
-    system("evince report.pdf");
+        system("rm *.aux");
+        system("rm *.out");
+        system("rm *.log");
+        system("rm *.xml");
+        system("rm *.bcf");
+
+
+        system("evince report.pdf");
+
+    }
+    emit progress(1);
+    emit sendMsg("Завершено!");
+
+
 
 }

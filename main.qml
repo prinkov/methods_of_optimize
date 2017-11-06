@@ -11,16 +11,19 @@ ApplicationWindow {
     property bool checkHtml: true
     title: qsTr("Методы оптимизации")
 
-
     Solver {
-        id: solver
-        onSendMsg: {
-            progressText.text = msg
-        }
-        function start() {
-            solver.run(variant.text)
-        }
-    }
+           id: solver
+           onSendMsg: {
+               progressText.text = msg
+           }
+           onProgress: {
+                progressBar.value = val
+                if(val == 1) {
+                    solver.terminate()
+                }
+           }
+       }
+
 
     Rectangle {
            anchors.fill: parent
@@ -62,6 +65,7 @@ ApplicationWindow {
                 anchors.topMargin: 5
                 anchors.horizontalCenter: parent.horizontalCenter
                 value: 0
+
             }
             WorkerScript {
                 id: scripts
@@ -130,7 +134,8 @@ ApplicationWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "Решить!"
                 onClicked: {
-                    solver.run(variant.text, checkHtml, checkLatex)
+                        solver.set(variant.text, checkHtml, checkLatex)
+                        solver.start()
                 }
            }
     }

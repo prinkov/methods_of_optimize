@@ -2,9 +2,9 @@
 
 using namespace std;
 
-ofstream out("work.tex");
-ofstream maple("maple.txt");
-ofstream outHtml("output.html");
+ofstream out;
+ofstream maple;
+ofstream outHtml;
 
 Vector* e;
 
@@ -330,9 +330,9 @@ Vector Solver::Nelder_Mead(Vector X) {
 }
 
 void Solver::solve(int variant) {
-    out.open("work.tex");
-    maple.open("maple.txt");
-    outHtml.open("output.html");
+    out.open("results/work.tex");
+    maple.open("results/maple.txt");
+    outHtml.open("results/output.html");
     setlocale(LC_ALL, "russian");
     qDebug()<<variant<<" " << html << " " << latex<<endl;
     if(html)
@@ -343,6 +343,24 @@ void Solver::solve(int variant) {
                 <<"* {font-size:18px;}"
                 <<"</style></head>"
               <<endl;
+    if(latex)
+            out << "\\documentclass[14pt]{extarticle}"
+                <<endl<<"\\usepackage{style}"
+                <<endl<<"\\usepackage{amsfonts}"
+                <<endl<<"\\usepackage{icomma}"
+                <<endl<<"\\usepackage{float}"
+                <<endl<<"\\mathchardef\\mhyphen=\"2D"
+                <<endl<<"\\usepackage[utf8]{inputenc}"
+                <<endl<< "\\usepackage{tikz}"
+                <<endl<<"\\newcommand{\\specialcell}[2][c]{%"
+                <<endl<<"\\begin{tabular}[#1]{@{}c@{}}#2\\end{tabular}}"
+                <<endl<<"\\newcommand*\\circled[1]{\\tikz[baseline=(char.base)]{"
+                <<endl<<"\\node[shape=circle,draw,inner sep=2pt] (char) {#1};}}"
+                <<endl<<"\\DeclareSymbolFont{matha}{OML}{txmi}{m}{it}% txfonts"
+                <<endl<<"\\DeclareMathSymbol{\\varv}{\\mathord}{matha}{118}"
+                <<endl<<"\\DeclareMathOperator{\\Div}{div}"
+                <<endl<<"\\DeclareMathOperator{\\tr}{tr}"
+                <<endl<<"\\begin{document}"<<endl;
     e = new Vector[n];
     e--;
     for(int i = 1; i <= n; i++)
@@ -352,7 +370,7 @@ void Solver::solve(int variant) {
 
     Vector begin;
 
-    ifstream is("variants.txt");
+    ifstream is("input/variants.txt");
     string methods[5] = {"Хука-Дживса", "покоординатного спуска", "Розенброка", "Пауэлла" ,"Нелдера-Мида"};
     int table = 1;
     for(zadanie = 1; zadanie <= 4; zadanie++) {
@@ -464,7 +482,7 @@ void Solver::solve(int variant) {
             }
             maple << "], x = " << Min[1] << ".." << Max[1] << ", y = " <<  Min[2] << ".." << Max[2] <<", color=red):" << endl;
             maple << "plot2 := contourplot(F" << zadanie << "(x, y), x =  " << Min[1] << ".." << Max[1] << ", y = " <<  Min[2] << ".." << Max[2] <<", color = blue):" << endl;
-            maple << "plotsetup(ps, plotoutput=\"./Images/output"<<zadanie<<i<<".eps\", plotoptions=`portrait,noborder,color`);"<<endl;
+            maple << "plotsetup(ps, plotoutput=\"./results/Images/output"<<zadanie<<i<<".eps\", plotoptions=`portrait,noborder,color`);"<<endl;
             maple << "display(plot1, plot2);" << endl << endl;
 
         }
@@ -484,6 +502,8 @@ void Solver::solve(int variant) {
             <<"<a href='./maple.txt'>No Support?</a>"
             <<"</object>"
             <<"<html>";
+    if(latex)
+        out << "\\end{document}";
     emit sendMsg("Сохранение отчета html");
     progress(0.65);
 
@@ -492,27 +512,28 @@ void Solver::solve(int variant) {
     maple.close();
     delete [] ++e;
     if(latex) {
-        system("rm latex_log maple_log ");
+        system("rm ./results/latex_log ./results/maple_log ");
         emit sendMsg("Лог работы расположен в файлах latex_log и maple_log соответственно");
         emit sendMsg("maple начал построение графиков");
-        system("maple ./maple.txt > ./maple_log");
+        system("maple ./results/maple.txt > ./results/maple_log");
         emit sendMsg("maple закончил построение графиков");
         emit progress(0.70);
         emit sendMsg("latex начал сборку отчета");
-        system("pdflatex  -synctex=1 -interaction=nonstopmode report.tex > /dev/null");
-        system("pdflatex  -synctex=1 -interaction=nonstopmode report.tex > ./latex_log");
+        system("pdflatex -output-directory=results -synctex=1 -interaction=nonstopmode ./results/work.tex > /dev/null");
+        system("pdflatex -output-directory=results -synctex=1 -interaction=nonstopmode ./results/work.tex > ./results/latex_log");
         emit sendMsg("latex закончил сборку отчета");
         emit progress(0.90);
         emit sendMsg("удаление временных файлов");
 
-        system("rm *.aux");
-        system("rm *.out");
-        system("rm *.log");
-        system("rm *.xml");
-        system("rm *.bcf");
+        system("rm ./results/*.aux");
+        system("rm ./results/*.out");
+        system("rm ./results/*.log");
+        system("rm ./results/*.xml");
+        system("rm ./results/*.bcf");
+        system("rm ./results/*.gz");
 
 
-        system("evince report.pdf");
+        system("evince ./results/work.pdf");
 
     }
     emit progress(1);

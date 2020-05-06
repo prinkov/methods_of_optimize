@@ -10,11 +10,10 @@ int main(int argc, char *argv[]) {
     QQmlApplicationEngine engine;
     QQmlContext *context = engine.rootContext();
 
-//    Solver *solver = new Solver;
-//    context->setContextProperty("solver", solver);
     qmlRegisterType<Solver>("xyz.prinkov", 1, 0, "Solver");
 
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
+
     if (engine.rootObjects().isEmpty())
         return -1;
 
